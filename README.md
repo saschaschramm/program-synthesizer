@@ -5,9 +5,9 @@ Diff GPT 2 is a language model based program synthesizer that can synthesize pro
 
 ## Description
 
-<img src="dataflow.png">
+<img src="dataflow.png" width="50%">
 
-A language model based code synthesizer `(3)` is used to synthesize a program iteratively. A specification `(1)` describes the change between the old `(2)` and new program `(4)`. The language model uses the specification and old program to generate the new program. After each step the program is executed by the verifier `(5)`. The verifier checks the program for errors and if there are errors the feedback is used by the language model to generate a new program without errors.
+A language model based code synthesizer `(3)` is used to synthesize a program iteratively. A specification `(1)` describes the change between the old `(2)` and new program `(4)`. The language model uses the specification and old program to generate the new program. After each step the program is executed by a verifier `(5)`. The verifier checks the program for errors and if there are errors the feedback is used by the language model to generate a new program without errors.
 
 ## Example specifications
 
