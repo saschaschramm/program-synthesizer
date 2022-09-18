@@ -9,7 +9,6 @@ class CustomFormatter(logging.Formatter):
     red: str = "\x1b[31;20m"
     bold_red: str = "\x1b[31;1m"
     reset: str = "\x1b[0m"
-
     _FORMAT: str = "%(asctime)s - (%(filename)s:%(lineno)s) - %(levelname)s: %(message)s"
 
     def _format_with_level(self, level: int, format_str: str) -> str:
