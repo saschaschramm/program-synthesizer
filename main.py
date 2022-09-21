@@ -6,7 +6,6 @@ from code_synthesizer import CodeSynthesizer
 from logging_utils import get_logger
 from logging import Logger
 from auto_debugger.component import AutoDebugger
-from component2.component import TestSynthesizer
 
 logger: Logger = get_logger()
 
@@ -31,7 +30,6 @@ def main(program_spec) -> None:
     verifier: Verifier = Verifier(globals())
     code_synthesizer: CodeSynthesizer = CodeSynthesizer()
     auto_debugger: AutoDebugger = AutoDebugger()
-    test_synthesizer: TestSynthesizer = TestSynthesizer()
 
     for index, specification in enumerate(specifications):
         filename_spec = f"{index*10:04d}"
@@ -57,10 +55,6 @@ def main(program_spec) -> None:
                 print(exception)
                 exit()
             num_tries += 1
-
-        # Test
-        test = test_synthesizer.synthesize(code, filename_spec)
-        utils.write_file(f"{code}\n\n# {specification}\n\n{test}", config.TMP_DIR, f"{filename_spec}-test", "py")
 
 if __name__ == "__main__":
     main(config.SPEC_FILE)
