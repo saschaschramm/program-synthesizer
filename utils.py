@@ -1,37 +1,46 @@
+import json
 import os
 import shutil
 from typing import Optional
-from config import config
+
+
+def read_file_with_path(path: str) -> str:
+    with open(path, mode="r", encoding="utf-8") as file:
+        extension: str = os.path.splitext(path)[-1]
+        if extension == ".json":
+            return json.load(file)
+        else:
+            return file.read()
 
 
 def read_file(dir: str, filename: str, extension: str) -> str:
     path: str = os.path.join(dir, f"{filename}.{extension}")
-    with open(path, mode="r", encoding="utf-8") as file:
-        return file.read()
+    return read_file_with_path(path)
 
-def write_file(string: str, dir: str, filename: str, extension: str = "txt") -> None:
+
+def write_file(string: str, dir: str, filename: str, extension: str) -> None:
     path: str = os.path.join(dir, f"{filename}.{extension}")
     with open(path, mode="w", encoding="utf-8") as file:
         file.write(string)
 
-def persist(prompt: str, specification: Optional[str], code: str, filename: str) -> None:
-    write_file(prompt, config.TMP_DIR, filename, "prompt")
-    if specification is not None:
-        write_file(specification, config.TMP_DIR, filename, "spec")
-    write_file(code, config.TMP_DIR, filename, "py")
-    write_file(code, config.PROGRAM_DIR, "main", "py")
 
-def clean() -> None:
-    if not config.DEBUG:
-        if os.path.exists(config.PROGRAM_DIR):
-            shutil.rmtree(config.PROGRAM_DIR)
-        os.makedirs(config.PROGRAM_DIR)
+def persist(
+    prompt: Optional[str], program: str, tmp_dir: Optional[str], filename: str
+) -> None:
 
-    if os.path.exists(config.TMP_DIR):
-        shutil.rmtree(config.TMP_DIR)
-    os.makedirs(config.TMP_DIR)
+    if prompt is not None:
+        write_file(prompt, tmp_dir, filename, "prompt")
 
-def initalize() -> None:
-    if not config.DEBUG:
-        program: str = read_file("example", "main", "py")
-        write_file(program.strip(), "program", "main", "py")
+    write_file(program, tmp_dir, filename, "py")
+    write_file(program, tmp_dir, "main", "py")
+
+
+def make_dir(dir: str) -> None:
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    os.makedirs(dir)
+
+
+def initalize(target_dir: str, program: Optional[str] = None) -> None:
+    write_file(program.strip(), target_dir, "main", "py")
+    write_file(program.strip(), target_dir, "0000", "py")

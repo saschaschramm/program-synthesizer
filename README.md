@@ -5,7 +5,7 @@ Diff GPT 2 is a language model based program synthesizer that can synthesize pro
 
 ## Description
 
-<img src="dataflow.png" width="50%">
+<div style="text-align:center"><img src="dataflow.png" width="50%"/></div>
 
 A language model based code synthesizer `(3)` is used to synthesize a program iteratively. A specification `(1)` describes the change between the old `(2)` and new program `(4)`. The language model uses the specification and old program to generate the new program. After each step the program is executed by a verifier `(5)`. The verifier checks the program for errors and if there are errors the feedback is used by the language model to generate a new program without errors.
 
@@ -50,8 +50,29 @@ def hello():
 ### OpenID connect specification
 The folder `specs` contains the file `program-oidc.spec` that specifies a simple OpenID connect client program. The specification for the client is based on the official [OpenID Connect 1.0](https://openid.net/specs/openid-connect-basic-1_0.html) specification.
 
-## Run
+## Run program synthesis
 For running the program synthesizer access to the OpenAI Codex model is required:
 ```
 python main.py
 ```
+
+## Evaluate
+Preprate evaluation
+```bash
+python prepare_evaluation.py
+```
+
+```bash
+sh sandbox.sh
+```
+
+| Pass@1 | Date
+| --- | --- |
+| 53.66% | 2022-10-23 |
+
+## References
+
+| Paper | Comment |
+| --- | --- |
+| [Repair Is Nearly Generation: Multilingual Program Repair with LLMs](https://arxiv.org/pdf/2208.11640.pdf) | Prompt for the Auto Debugger was insipired by this paper |
+

@@ -1,17 +1,18 @@
-from verification_error import VerificationError
+from logging import Logger
+from os.path import join
 import utils
 from config import config
-from verifier import Verifier
-from code_synthesizer import CodeSynthesizer
+from components.auto_debugger.component import AutoDebugger
+from components.program_synthesizer.component import ProgramSynthesizer
+from components.verifier.component import Verifier
+from components.verifier.verification_error import VerificationError
 from logging_utils import get_logger
-from logging import Logger
-from auto_debugger.component import AutoDebugger
 
 logger: Logger = get_logger()
 
 
 def _specifications(filename: str) -> list[str]:
-    lines = ["Initial commit"]
+    lines = []
     with open(filename, mode="r", encoding="utf-8") as file:
         lines += file.readlines()
         # Ignore empty lines
@@ -21,40 +22,63 @@ def _specifications(filename: str) -> list[str]:
         return [line.strip() for line in lines]
 
 
-def main(program_spec) -> None:
-    utils.clean()
-    utils.initalize()
-    old_name: str = "old"
-    new_name: str = "new"
-    specifications: list[str] = _specifications(program_spec)
-    verifier: Verifier = Verifier(globals())
-    code_synthesizer: CodeSynthesizer = CodeSynthesizer()
-    auto_debugger: AutoDebugger = AutoDebugger()
+def _verify(verifier, auto_debugger: AutoDebugger, filename, tmp_dir, program):
+    num_tries: int = 0
+    max_tries: int = 3
+    while num_tries < max_tries:
+        try:
+            verifier.verify(join(tmp_dir, "main.py"))
+            logger.info(f"Verification succeeded")
+            break
+        except VerificationError as error:
+            logger.error(f"{error}")
+            logger.info(f"Try {num_tries}")
+            prompt, program = auto_debugger.debug(program, error)
+            filename_fix = f"{filename}-{num_tries}-{error.name.lower()}-fix"
+            utils.persist(str(prompt), program, tmp_dir, filename_fix)
+        except Exception as exception:
+            print(exception)
+            exit()
+        num_tries += 1
+
+
+def _synthesize(program_synthesizer, verifier, auto_debugger, specifications, taskname):
+    if taskname is None:
+        tmp_dir = config.TMP_DIR
+    else:
+        tmp_dir = join(config.TMP_DIR, taskname)
 
     for index, specification in enumerate(specifications):
-        filename_spec = f"{index*10:04d}"
-        logger.info(f"{filename_spec} ---------------------------------")
+        filename = f"{(index+1)*10:04d}"
+        logger.info(f"{taskname} – {filename} ---------------------------------")
         logger.info(f"Specification: {specification}")
-        prompt, code = code_synthesizer.synthesize(specification, old_name, new_name)
+        old_program: str = utils.read_file(tmp_dir, "main", "py").strip()
+        prompt, program = program_synthesizer.synthesize(specification, old_program)
+        utils.persist(str(prompt), program, tmp_dir, filename)
+        if verifier is not None:
+            _verify(verifier, auto_debugger, filename, tmp_dir, program)
 
-        utils.persist(prompt, specification, code, filename_spec)
-        num_tries: int = 0
-        max_tries: int = 3
-        while num_tries < max_tries:
-            try:
-                verifier.verify(code)
-                logger.info(f"Verification succeeded")
-                break
-            except VerificationError as error:
-                logger.error(f"Verification failed: {error.name}")
-                logger.info(f"Fix {error.name} - try {num_tries}")
-                prompt, code = auto_debugger.debug(code, error)
-                filename = f"{filename_spec}-{num_tries}-{error.name.lower()}-fix"
-                utils.persist(str(prompt), None, code, filename)
-            except Exception as exception:
-                print(exception)
-                exit()
-            num_tries += 1
+
+def main() -> None:
+    utils.make_dir(config.TMP_DIR)
+    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer()
+    if config.EVALUATION:
+        tasks = utils.read_file("data", "tasks", "json")
+        for taskname, task in tasks.items():
+            taskname = taskname.replace("/", "-")
+            utils.make_dir(join(config.TMP_DIR, taskname))
+            specifications = [task["specification"]]
+            initial_program = task["program"]
+            utils.initalize(join(config.TMP_DIR, taskname), initial_program)
+            _synthesize(program_synthesizer, None, None, specifications, taskname)
+    else:
+        verifier: Verifier = Verifier()
+        auto_debugger: AutoDebugger = AutoDebugger()
+        initial_program = utils.read_file(config.DATA_DIR, "main", "py")
+        utils.initalize(config.TMP_DIR, initial_program)
+        specifications = _specifications(config.SPEC_FILE)
+        _synthesize(program_synthesizer, verifier, auto_debugger, specifications, None)
+
 
 if __name__ == "__main__":
-    main(config.SPEC_FILE)
+    main()
