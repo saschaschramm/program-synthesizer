@@ -62,7 +62,7 @@ sh sandbox.sh
 ```
 
 | File | Pass@1 | Date
-|--- | --- | --- |
+| --- | --- | --- |
 tasks-synthesized.json| 54.88% | 2022-10-23 |
 
 ## References
