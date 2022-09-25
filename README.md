@@ -1,7 +1,7 @@
-# Diff GPT 2
+# Program Synthesizer
 
 ## Introduction
-Diff GPT 2 is a language model based program synthesizer that can synthesize programs from a given program specification.
+This is a language model based program synthesizer that can synthesize programs from a given program specification.
 
 ## Description
 <div align="center">
@@ -21,22 +21,15 @@ if __name__ == "__main__":
     pass
 ```
 
-Specification:
-```Python
-Add a function hello that returns the string "hello, world"
-```
-
 Prompt:
-```XML
-<old>
+```Python
+### Old
 if __name__ == "__main__":
     pass
-</old>
-<specification>
+### Specification
 Change the old program according to the following specification:
 Add a function hello that returns the string "hello, world"
-</specification>
-<new>
+### New
 ```
 
 New program:
@@ -58,11 +51,12 @@ python main.py
 ```
 
 ## Evaluate
-Preprate evaluation
+Prepare evaluation
 ```bash
 python main_program_syn_evaluate1.py
 ```
 
+Run evaluation
 ```bash
 sh sandbox.sh
 ```
