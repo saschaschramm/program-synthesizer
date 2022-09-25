@@ -5,7 +5,7 @@ from config import config
 
 
 def main():
-    test_dir = join(config.DATA_DIR, "tmp")
+    test_dir = join(config.DATA_DIR, "test")
     test_filenames = os.listdir(test_dir)
     test_filenames.sort()
     verifier: Verifier = Verifier()

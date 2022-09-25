@@ -11,10 +11,7 @@ if __name__ == "__main__":
         try:
             task_dir = os.path.join(config.TMP_DIR, taskname)
             program = utils.read_file(task_dir, "main", "py")
-            test = task["test"]
-            entry_point = task["entry_point"]
-            program = f"""{program}\n{test}\ncheck({entry_point})"""
-            utils.write_file(program, test_dir, f"{taskname}", "py")
+            task["program_2"] = program
         except:
             print("Task", taskname, "does not have a main.py file")
-
+    utils.write_json_file(tasks, config.TMP_DIR, "tasks-synthesized", "json")

@@ -63,7 +63,7 @@ def main() -> None:
     utils.make_dir(config.TMP_DIR)
     program_synthesizer: ProgramSynthesizer = ProgramSynthesizer()
     if config.EVALUATION:
-        tasks = utils.read_file("data", "tasks", "json")
+        tasks = utils.read_file(config.DATA_DIR, "tasks", "json")
         for taskname, task in tasks.items():
             taskname = taskname.replace("/", "-")
             utils.make_dir(join(config.TMP_DIR, taskname))

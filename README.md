@@ -4,8 +4,9 @@
 Diff GPT 2 is a language model based program synthesizer that can synthesize programs from a given program specification.
 
 ## Description
-
-<div style="text-align:center"><img src="dataflow.png" width="50%"/></div>
+<div align="center">
+<img src="dataflow.png" width="50%"/>
+</div>
 
 A language model based code synthesizer `(3)` is used to synthesize a program iteratively. A specification `(1)` describes the change between the old `(2)` and new program `(4)`. The language model uses the specification and old program to generate the new program. After each step the program is executed by a verifier `(5)`. The verifier checks the program for errors and if there are errors the feedback is used by the language model to generate a new program without errors.
 
@@ -59,16 +60,16 @@ python main.py
 ## Evaluate
 Preprate evaluation
 ```bash
-python prepare_evaluation.py
+python main_program_syn_evaluate1.py
 ```
 
 ```bash
 sh sandbox.sh
 ```
 
-| Pass@1 | Date
-| --- | --- |
-| 53.66% | 2022-10-23 |
+| File | Pass@1 | Date
+|--- | --- | --- |
+tasks-synthesized.json| 54.88% | 2022-10-23 |
 
 ## References
 

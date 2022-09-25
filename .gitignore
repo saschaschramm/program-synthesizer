@@ -2,6 +2,7 @@
 __pycache__/
 program/
 tmp/
+tmp-evaluate/
 tex/
 baseline/
 .vscode/

@@ -24,6 +24,11 @@ def write_file(string: str, dir: str, filename: str, extension: str) -> None:
         file.write(string)
 
 
+def write_json_file(dict: dict, dir: str, filename: str, extension: str) -> None:
+    path: str = os.path.join(dir, f"{filename}.{extension}")
+    with open(path, mode="w", encoding="utf-8") as file:
+        json.dump(dict, file, indent=4)
+
 def persist(
     prompt: Optional[str], program: str, tmp_dir: Optional[str], filename: str
 ) -> None:
