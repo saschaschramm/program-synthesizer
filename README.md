@@ -70,4 +70,3 @@ tasks-synthesized.json| 54.88% | 2022-10-23 |
 | Paper | Comment |
 | --- | --- |
 | [Repair Is Nearly Generation: Multilingual Program Repair with LLMs](https://arxiv.org/pdf/2208.11640.pdf) | Prompt for the Auto Debugger was insipired by this paper |
-
