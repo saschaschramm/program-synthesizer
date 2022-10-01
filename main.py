@@ -1,5 +1,5 @@
 from logging import Logger
-from os.path import join
+import os
 import utils
 from config import config
 from components.auto_debugger.component import AutoDebugger
@@ -22,62 +22,35 @@ def _specifications(filename: str) -> list[str]:
         return [line.strip() for line in lines]
 
 
-def _verify(verifier, auto_debugger: AutoDebugger, filename, tmp_dir, program):
-    num_tries: int = 0
-    max_tries: int = 3
-    while num_tries < max_tries:
-        try:
-            verifier.verify(join(tmp_dir, "main.py"))
-            logger.info(f"Verification succeeded")
-            break
-        except VerificationError as error:
-            logger.error(f"{error}")
-            logger.info(f"Try {num_tries}")
-            prompt, program = auto_debugger.debug(program, error)
-            filename_fix = f"{filename}-{num_tries}-{error.name.lower()}-fix"
-            utils.persist(str(prompt), program, tmp_dir, filename_fix)
-        except Exception as exception:
-            print(exception)
-            exit()
-        num_tries += 1
-
-
-def _synthesize(program_synthesizer, verifier, auto_debugger, specifications, taskname):
-    if taskname is None:
-        tmp_dir = config.TMP_DIR
-    else:
-        tmp_dir = join(config.TMP_DIR, taskname)
+def main() -> None:
+    utils.make_dir(config.TMP_SYN_DIR)
+    verifier: Verifier = Verifier(config.TMP_SYN_DIR)
+    auto_debugger: AutoDebugger = AutoDebugger()
+    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer(config.TMP_SYN_DIR)
+    program: str = utils.read_file(os.path.join(config.DATA_DIR, "main.py"))
+    utils.write_file(os.path.join(config.TMP_SYN_DIR, "0000.py"), program.strip())
+    specifications: list[str] = _specifications(config.SPEC_FILE)
 
     for index, specification in enumerate(specifications):
-        filename = f"{(index+1)*10:04d}"
-        logger.info(f"{taskname} – {filename} ---------------------------------")
+        filename: str = utils.filename(index + 1)
+        logger.info(f"{filename} ---------------------------------")
         logger.info(f"Specification: {specification}")
-        old_program: str = utils.read_file(tmp_dir, "main", "py").strip()
-        prompt, program = program_synthesizer.synthesize(specification, old_program)
-        utils.persist(str(prompt), program, tmp_dir, filename)
-        if verifier is not None:
-            _verify(verifier, auto_debugger, filename, tmp_dir, program)
-
-
-def main() -> None:
-    utils.make_dir(config.TMP_DIR)
-    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer()
-    if config.EVALUATION:
-        tasks = utils.read_file(config.DATA_DIR, "tasks", "json")
-        for taskname, task in tasks.items():
-            taskname = taskname.replace("/", "-")
-            utils.make_dir(join(config.TMP_DIR, taskname))
-            specifications = [task["specification"]]
-            initial_program = task["program"]
-            utils.initalize(join(config.TMP_DIR, taskname), initial_program)
-            _synthesize(program_synthesizer, None, None, specifications, taskname)
-    else:
-        verifier: Verifier = Verifier()
-        auto_debugger: AutoDebugger = AutoDebugger()
-        initial_program = utils.read_file(config.DATA_DIR, "main", "py")
-        utils.initalize(config.TMP_DIR, initial_program)
-        specifications = _specifications(config.SPEC_FILE)
-        _synthesize(program_synthesizer, verifier, auto_debugger, specifications, None)
+        program: str = program_synthesizer.synthesize(specification, program, filename)
+        num_tries: int = 0
+        max_tries: int = 3
+        while num_tries < max_tries:
+            try:
+                verifier.verify(program, None)
+                logger.info(f"Verification succeeded")
+                break
+            except VerificationError as error:
+                logger.error(f"{error}")
+                logger.info(f"Try {num_tries}")
+                program = auto_debugger.debug(program, error, filename, num_tries)
+            except Exception as exception:
+                print(exception)
+                exit()
+            num_tries += 1
 
 
 if __name__ == "__main__":

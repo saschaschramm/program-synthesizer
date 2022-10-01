@@ -1,7 +1,6 @@
 ### Buggy Python
 def hello():
     print("hello"
-### SyntaxError: '(' was never closed
 ### Fixed Python
 def hello():
     print("hello")
@@ -11,7 +10,6 @@ if __name__ == "__main__":
 
 def foo():
     return "foo"
-### NameError: name 'foo' is not defined
 ### Fixed Python
 def foo():
     return "foo"
