@@ -90,5 +90,5 @@ Test 3: The ground truth tests are used for debugging. If a test fails, then a n
 
 | Paper | Comment |
 | --- | --- |
-| [Evolution through Large Models](https://arxiv.org/pdf/2206.08896.pdf) | Inspiration for program mutation |
-| [Repair Is Nearly Generation: Multilingual Program Repair with LLMs](https://arxiv.org/pdf/2208.11640.pdf) | Prompt for the Auto Debugger was insipired by this paper |
+|[Evolution through Large Models](https://arxiv.org/pdf/2206.08896.pdf) | Inspiration for program mutation |
+|[Repair Is Nearly Generation: Multilingual Program Repair with LLMs](https://arxiv.org/pdf/2208.11640.pdf) | Prompt for the Auto Debugger was insipired by this paper |
