@@ -10,20 +10,6 @@ logger.disabled = True
 
 class Completion:
 
-    """
-    def __init__(
-        self,
-        engine: str,
-        stop: list[str],
-        temperature: float,
-        max_completion_tokens: int,
-    ) -> None:
-        self.engine = engine
-        self.stop = stop
-        self.temperature = temperature
-        self.max_completion_tokens = max_completion_tokens
-        self.max_num_tries = 5
-    """
     @classmethod
     def create(cls, prompt: str, temperature: float, max_completion_tokens: int, stop: list[str], engine: str) -> dict:
         max_num_tries = 3
