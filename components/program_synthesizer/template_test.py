@@ -6,6 +6,8 @@ The function hello should return the word "hello"
 ### New
 def hello():
     return "hello"
+### Tests (max 5)
+assert hello() == "hello"
 ### Old
 {program}
 ### Specification

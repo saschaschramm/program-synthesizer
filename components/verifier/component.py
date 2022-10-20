@@ -1,32 +1,32 @@
-import os
 import subprocess
-from typing import Optional
+from tempfile import NamedTemporaryFile
 from components.verifier.verification_error import VerificationError
-import utils
-
 
 class Verifier:
-    def __init__(self, path) -> None:
-        self.path: str = path
-        self.program_path = os.path.join(self.path, "main.py")
-        self.command_copy: str = f"docker cp {self.program_path} sandbox:/code/main.py"
+    def __init__(self) -> None:
         self.command_exec: str = "docker exec sandbox python /code/main.py"
 
-    def verify(self, program: str, path_executable: Optional[str]) -> str:
-        utils.write_file(self.program_path, program)
-        command: str = f"{self.command_copy};{self.command_exec}"
-        process: subprocess.Popen = subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        stdout, stderr = process.communicate()
-        stderr_str = stderr.decode("utf-8")
-
-        lines = stderr_str.splitlines()
-
-        if path_executable is not None:
-            utils.write_file(os.path.join(self.path, path_executable), program)
-
-        if len(lines) > 0:
-            message = lines[-1]
-            raise VerificationError(message)
-        return command
+    def verify(self, program: str) -> str:
+        with NamedTemporaryFile(suffix='.py', delete=True) as tmp_file:
+            tmp_file.write(program.encode())
+            tmp_file.flush()
+            command_copy: str = f"docker cp {tmp_file.name} sandbox:/code/main.py"
+            command: str = f"{command_copy};{self.command_exec}"
+            process: subprocess.Popen = subprocess.Popen(
+                command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            stdout, stderr = process.communicate()
+            stderr_str = stderr.decode("utf-8")
+            stdout_str = stdout.decode("utf-8")
+            #print(stderr_str)
+            #print(stdout_str)
+            lines: list[str] = stderr_str.splitlines()
+            if len(lines) > 0:
+                error_type: str = lines[-1]
+                #if error_type == "AssertionError":
+                #    assert_message: str = lines[-2].strip()
+                #    message: str = f"{error_type}: {assert_message}"
+                #else:
+                message: str = error_type
+                raise VerificationError(message)
+            return command

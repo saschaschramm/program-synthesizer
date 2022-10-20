@@ -2,7 +2,10 @@ import json
 import os
 import shutil
 
-def read_file(path: str) -> str:
+from typing import Any
+
+
+def read_file(path: str) -> Any:
     with open(path, mode="r", encoding="utf-8") as file:
         extension: str = os.path.splitext(path)[-1]
         if extension == ".json":
