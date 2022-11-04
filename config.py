@@ -15,8 +15,6 @@ class Config(Base):
     # SPEC_FILE: str = os.path.join("specs", "program-oidc.spec")
     # SPEC_FILE: str = os.path.join("specs", "program-bug.spec")
     SPEC_FILE: str = os.path.join("specs", "program-hello.spec")
-    NUM_TOKENS: int = 500
-    EVALUATION: bool = False
-
+    ENGINE: str = "code-davinci-002"
 
 config: Config = Config()

@@ -13,11 +13,13 @@ def read_file(path: str) -> Any:
         else:
             return file.read()
 
-
 def write_file(path, string) -> None:
     with open(path, mode="w", encoding="utf-8") as file:
         file.write(string)
 
+def write_files(dir: str, files: list) -> None:
+    for file_name, file_content in files:
+        write_file(os.path.join(dir, file_name), file_content)
 
 def write_json(path: str, dict: dict) -> None:
     with open(path, mode="w", encoding="utf-8") as file:

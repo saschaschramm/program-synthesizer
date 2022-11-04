@@ -1,103 +1,101 @@
-from logging import Logger
-from components.auto_debugger.component import AutoDebugger
-from components.program_synthesizer.component import ProgramSynthesizer
-from components.prompt import Prompt
-from components.verifier.component import Verifier
-from components.verifier.component import VerificationError
-import utils
 import os.path
-from logging_utils import get_logger
-from config import config
-from program import Program
-
-
-from components.program_synthesizer.completion_prompt import (
-    CompletionPrompt as SynthesizerPrompt,
-)
+from logging import Logger
+from typing import Optional
+from components.auto_debugger.component import AutoDebugger
 from components.auto_debugger.completion_prompt import (
     CompletionPrompt as DebuggerPrompt,
 )
+from components.program_synthesizer.component import ProgramSynthesizer
+from components.explainer.component import Explainer
+from components.verifier.component import Verifier
+import utils
+import synthesize_utils
+from logging_utils import get_logger
+from config import config
 
 logger: Logger = get_logger()
 
-
-ASSERTION_ERROR: str = "AssertionError"
-
+SOURCE_DIR: str = config.DATA_DIR
+TARGET_DIR: str = config.TMP_DEBUG_DIR
+USE_SYN_TESTS: bool = False
 
 if __name__ == "__main__":
-    SOURCE_DIR: str = config.TMP_DIR
-    TARGET_DIR: str = config.TMP_DEBUG_DIR
-    USE_SYN_TESTS = False
 
     utils.make_dir(TARGET_DIR)
     tasks: dict = utils.read_file(os.path.join(SOURCE_DIR, "tasks-synthesized.json"))
-    auto_debugger: AutoDebugger = AutoDebugger()
+    auto_debugger: AutoDebugger = AutoDebugger(config.ENGINE, 1000, stream=False)
     verifier: Verifier = Verifier()
-    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer()
+    explainer: Explainer = Explainer()
+    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer(
+        config.ENGINE, max_completion_tokens=500, stream=False
+    )
+
+    module_name: str = "main"
 
     for taskname, task in tasks.items():
-        logger.info(f"{taskname} ---------------------------------")
-        taskname: str = taskname.replace("/", "-")
-        tmp_task_dir: str = os.path.join(config.TMP_DEBUG_DIR, taskname)
-        utils.make_dir(tmp_task_dir)
-        utils.write_file(
-            os.path.join(tmp_task_dir, f"{utils.filename(0)}.py"), task["program"]
-        )
+        # if taskname != "HumanEval-18":
+        #    continue
+        logger.info(f"{taskname} ---------------------------------")        
+        try_dir: str = os.path.join(TARGET_DIR, taskname, utils.filename(0))
+        utils.make_dir(try_dir)
+        utils.write_file(os.path.join(try_dir, "main.py"), task["program"])
         program: str = task["program_synthesized"]
         entry_point: str = task["entry_point"]
         specification: str = task["specification"]
-
-        if USE_SYN_TESTS:
-            tests: str = task["test_synthesized"]
-        else:
-            tests = task["test"]
-
         num_tries: int = 0
         max_tries: int = 3
+        debugger_prompt: Optional[DebuggerPrompt] = None
         while num_tries < max_tries:
-            verifier_program = Program(program, timeout=3)
-
             if USE_SYN_TESTS:
-                verifier_program.add_syn_tests(tests, entry_point)
+                test = synthesize_utils.test(
+                    module_name=module_name,
+                    test=task["test_synthesized"],
+                    entry_point=None,
+                )
             else:
-                verifier_program.add_tests(tests, entry_point)
-
-            try:
-                path_executable: str = os.path.join(
-                    TARGET_DIR, taskname, f"{utils.filename(1)}-{num_tries}-exec.py"
+                test = synthesize_utils.test(
+                    module_name=module_name,
+                    test=task["test"],
+                    entry_point=entry_point,
                 )
-                utils.write_file(path_executable, str(verifier_program))
-                command: str = verifier.verify(str(verifier_program))
-                logger.info(f"Verification succeeded – {command}")
-                break
-            except VerificationError as error:
-                logger.error(f"{error}")
-                logger.info(f"Try {num_tries}")
-
-                error_list: list[str] = str(error).split(":")
-                if len(error_list) > 0:
-                    error_type: str = error_list[0].strip()
-                else:
-                    error_type: str = str(error)
-
-                if error_type == ASSERTION_ERROR:
-                    prompt: Prompt = SynthesizerPrompt(
-                        specification, program, template_file="template.py"
-                    )
-                    program, _ = program_synthesizer.synthesize(prompt, temperature=0.7)
-                else:
-                    prompt: Prompt = DebuggerPrompt(
-                        program, error.message, template_file="template.py"
-                    )
-                    program = auto_debugger.debug(prompt, temperature=0.0)
-
-                name = f"{utils.filename(1)}-{num_tries}–{error_type}"
+            try_dir: str = os.path.join(TARGET_DIR, taskname, utils.filename(1), str(num_tries))
+            utils.make_dir(try_dir)
+            utils.write_files(try_dir, [("test.py", test), (f"{module_name}.py", program)])
+            if debugger_prompt is not None:
                 utils.write_file(
-                    os.path.join(TARGET_DIR, taskname, f"{name}.prompt"), str(prompt)
+                    os.path.join(try_dir, f"debug_prompt.py"),
+                    synthesize_utils.remove_line_number(str(debugger_prompt)),
                 )
-            except Exception as exception:
-                logger.error(f"Unexpected error: {exception}")
-                exit()
+
+            success, command, stderr = verifier.verify(
+                program,
+                test=test,
+                filename_program=f"{module_name}.py",
+                filename_test="test.py",
+            )
+            if success:
+                break
+            else:
+                logger.error(f"{stderr}")
+                logger.info(f"{taskname} - try {num_tries}")
+                last_line: str = synthesize_utils.last_line(stderr)
+                # If stderr > 8000 then just use last line
+                if len(stderr) > 8000:
+                    error = last_line
+                else:
+                    error = stderr
+
+                template_file, temperature = synthesize_utils.debugger_params(last_line)
+                debugger_prompt = DebuggerPrompt(
+                    specification=specification,
+                    program=program,
+                    error=error,
+                    explanation=None,
+                    template_file=template_file,
+                    module_name=module_name,
+                )
+                program = auto_debugger.debug(debugger_prompt, temperature=temperature,)
+
             num_tries += 1
         task["program_debugged"] = program
 

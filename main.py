@@ -1,28 +1,30 @@
-from logging import Logger
 import os
+from logging import Logger
 import utils
 from config import config
-from components.auto_debugger.component import AutoDebugger
 from components.program_synthesizer.component import ProgramSynthesizer
+from components.test_synthesizer.component import TestSynthesizer
 from components.verifier.component import Verifier
-from components.verifier.verification_error import VerificationError
+from components.auto_debugger.component import AutoDebugger
+from components.test_synthesizer.completion_prompt import CompletionPrompt as TestPrompt
+
 from components.prompt import Prompt
 
 from components.program_synthesizer.completion_prompt import (
-    CompletionPrompt as SynthesizerPrompt,
+    CompletionPrompt as ProgramPrompt,
 )
 from components.auto_debugger.completion_prompt import (
     CompletionPrompt as DebuggerPrompt,
 )
-from logging_utils import get_logger
 
-from program import Program
+from logging_utils import get_logger
+import synthesize_utils
 
 logger: Logger = get_logger()
 
 
 def _specifications(filename: str) -> list[str]:
-    lines = []
+    lines: list[str] = []
     with open(filename, mode="r", encoding="utf-8") as file:
         lines += file.readlines()
         # Ignore empty lines
@@ -33,70 +35,85 @@ def _specifications(filename: str) -> list[str]:
 
 
 def main() -> None:
-    ASSERTION_ERROR: str = "AssertionError"
-
+    module_name: str = "main"
     utils.make_dir(config.TMP_SYN_DIR)
     verifier: Verifier = Verifier()
-    auto_debugger: AutoDebugger = AutoDebugger()
-    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer()
-    program: str = utils.read_file(os.path.join(config.DATA_DIR, "main.py"))
-    utils.write_file(os.path.join(config.TMP_SYN_DIR, "0000.py"), program.strip())
+    program_synthesizer: ProgramSynthesizer = ProgramSynthesizer(
+        config.ENGINE, max_completion_tokens=500, stream=False
+    )
+    test_synthesizer: TestSynthesizer = TestSynthesizer(
+        config.ENGINE, max_completion_tokens=500, stream=False
+    )
+    auto_debugger: AutoDebugger = AutoDebugger(config.ENGINE, 1000, stream=False)
+
+    program_old: str = ""
     specifications: list[str] = _specifications(config.SPEC_FILE)
 
     for index, specification in enumerate(specifications):
         base_filename: str = utils.filename(index + 1)
         logger.info(f"{base_filename} ---------------------------------")
         logger.info(f"Specification: {specification}")
-        prompt: Prompt = SynthesizerPrompt(
-            specification, program, template_file="template_test.py"
+        program_prompt: Prompt = ProgramPrompt(
+            specification, program_old, template_file="template.py"
+        )
+    
+        program_new: str = program_synthesizer.synthesize(
+            program_prompt, temperature=0.0
         )
 
-        program, tests = program_synthesizer.synthesize(prompt, temperature=0.0)
-
         # We assume that the tests of the initial program are correct
-        utils.write_file(os.path.join(config.TMP_SYN_DIR, f"{base_filename}.test"), tests)
-        utils.write_file(os.path.join(config.TMP_SYN_DIR, f"{base_filename}.prompt"), str(prompt))
-        utils.write_file(os.path.join(config.TMP_SYN_DIR, f"{base_filename}.py"), program)
+        test_prompt: TestPrompt = TestPrompt(
+            specification=specification,
+            program_old=program_old,
+            program_new=program_new,
+            template_file="template.py",
+        )
+        program_old = program_new
+        test: str = test_synthesizer.synthesize(test_prompt, temperature=0.0)
+        test = synthesize_utils.test("main", test, None)
+        
+        tmp_dir: str = os.path.join(config.TMP_SYN_DIR, utils.filename(index), str(0))
+
+        utils.make_dir(tmp_dir)
+        utils.write_files(tmp_dir, [("test.py", test), ("prompt.py", str(program_prompt)), (f"{module_name}.py", program_new)])
 
         num_tries: int = 0
         max_tries: int = 3
         while num_tries < max_tries:
-            verifier_program: Program = Program(program, timeout=3)
-            try:
-                verifier.verify(str(verifier_program))
+            success, _, stderr = verifier.verify(
+                program_new,
+                test=test,
+                filename_program=f"{module_name}.py",
+                filename_test="test.py",
+            )
+            if success:
                 logger.info(f"Verification succeeded")
                 break
-            except VerificationError as error:
-                logger.error(f"{error}")
+            else:
+                logger.error(f"{stderr}")
                 logger.info(f"Try {num_tries}")
-                error_list: list[str] = str(error).split(":")
-                if len(error_list) > 0:
-                    error_type: str = error_list[0].strip()
-                else:
-                    error_type: str = str(error)
 
-                if error_type == ASSERTION_ERROR:
-                    # TODO This case is not triggered yet because the tests are not added to the program
-                    prompt: Prompt = SynthesizerPrompt(
-                        specification, program, template_file="template.py"
-                    )
-                    program, _ = program_synthesizer.synthesize(prompt, temperature=0.7)
-                else:
-                    # Tests are not generated again
-                    prompt: Prompt = DebuggerPrompt(
-                        program, error.message, template_file="template.py"
-                    )
-                    program = auto_debugger.debug(prompt, temperature=0.0)
+                last_line: str = synthesize_utils.last_line(stderr)
+                template_file, temperature = synthesize_utils.debugger_params(last_line)
 
-                filename = f"{base_filename}-{num_tries}–{error_type}"
-                utils.write_file(os.path.join(config.TMP_SYN_DIR, f"{filename}.prompt"), str(prompt))
-                utils.write_file(os.path.join(config.TMP_SYN_DIR, f"{filename}.py"), program)
+                debugger_prompt: DebuggerPrompt = DebuggerPrompt(
+                    specification=specification,
+                    program=program_new,
+                    error=stderr,
+                    explanation=None,
+                    template_file=template_file,
+                    module_name=module_name,
+                )
+                program_new: str = auto_debugger.debug(
+                    debugger_prompt, temperature=temperature
+                )
 
-            except Exception as exception:
-                print(exception)
-                exit()
-            
+                tmp_dir: str = os.path.join(config.TMP_SYN_DIR, utils.filename(index), str(num_tries+1))
+                utils.make_dir(tmp_dir)
+                utils.write_files(tmp_dir, [("test.py", test), ("prompt.py", str(debugger_prompt)), (f"{module_name}.py", program_new)])
+
             num_tries += 1
+
 
 if __name__ == "__main__":
     main()

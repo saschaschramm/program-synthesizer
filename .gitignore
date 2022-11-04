@@ -1,9 +1,8 @@
 .DS_Store
 __pycache__/
-program/
 tmp/
-tmp-evaluate/
 tex/
 baseline/
 .vscode/
 playground/
+demos/

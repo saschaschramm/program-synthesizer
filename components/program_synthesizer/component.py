@@ -1,35 +1,29 @@
 from completion import Completion
+
 from components.program_synthesizer.completion_prompt import CompletionPrompt
 from components.prompt import Prompt
-from config import config
+from typing import Any
+from components import utils
+
 
 
 class ProgramSynthesizer:
-    def __init__(self) -> None:
-        self.synthesize_tests: bool = True
+    def __init__(self, engine: str, max_completion_tokens: int, stream: bool) -> None:
+        self.engine: str = engine
+        self.max_completion_tokens = max_completion_tokens
+        self.stream = stream
 
-    def synthesize(self, prompt: Prompt, temperature) -> tuple[str, str]:
+    def synthesize(self, prompt: Prompt, temperature: float) -> Any:
         if isinstance(prompt, CompletionPrompt):
-            completion: dict = Completion.create(
+            completion: Any = Completion.create(
                 temperature=temperature,
-                max_completion_tokens=config.NUM_TOKENS,
-                stop=["### Old"],
-                engine="code-davinci-002",
+                max_completion_tokens=self.max_completion_tokens,
+                stop=["\n###"],
+                engine=self.engine,
                 prompt=str(prompt),
+                stream=self.stream
             )
-
-            if self.synthesize_tests:
-                text = completion["choices"][0]["text"].strip()
-                group = text.split("### Tests (max 5)")
-                program = group[0].strip()
-                if len(group) > 1:
-                    tests = group[1].strip()
-                else:
-                    tests = ""
-            else:
-                program: str = completion["choices"][0]["text"].strip()
-                tests = ""
-
-            return program, tests
+            return utils.completion_text(completion, self.stream)
         else:
             raise Exception(f"Unknown prompt type: {type(prompt)}")
+

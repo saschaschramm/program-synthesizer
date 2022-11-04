@@ -71,13 +71,14 @@ python main_program_syn_eval.py
 ```
 python main_auto_debugger_eval.py
 ```
+
+
 ### Results
 | Test | Pass | Num Pass | Date | Debugging
 | --- | --- | --- |  --- | --- |
-| 1 | 52.44% | 86 | 2022-10-18 |  - |
-| 2 | 61.59% | 101 | 2022-10-18 | With synthesized tests |
-| 3 | 65.85% | 108 | 2022-10-18 | With ground truth tests |
-
+| 1 | 54.27% | 89 | 2022-10-24 |  - |
+| 2 | 62.20% | 102 | 2022-11-03 | With synthesized tests |
+| 3 | 65.85% | 108 | 2022-11-04 | With ground truth tests |
 
 Test 1: Program synthesis without any debugging  
 Test 2: The synthesized tests are used for debugging. If a test fails, then a new program is generated.  
@@ -92,3 +93,6 @@ Test 3: The ground truth tests are used for debugging. If a test fails, then a n
 | --- | --- |
 |[Evolution through Large Models](https://arxiv.org/pdf/2206.08896.pdf) | Inspiration for program mutation |
 |[Repair Is Nearly Generation: Multilingual Program Repair with LLMs](https://arxiv.org/pdf/2208.11640.pdf) | Prompt for the Auto Debugger was insipired by this paper |
+
+
+
